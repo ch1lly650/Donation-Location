@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentCharityAccount } from "@/lib/charityAuth";
 import LogoutButton from "./LogoutButton";
 
 export default async function NavBar() {
   const user = await getCurrentUser();
+  const charityAccount = await getCurrentCharityAccount();
 
   return (
     <div
@@ -51,11 +53,28 @@ export default async function NavBar() {
         <span className="nav-link" style={{ cursor: "pointer" }}>
           How it works
         </span>
-        <span className="nav-link" style={{ cursor: "pointer" }}>
+        <Link href="/for-nonprofits" className="nav-link" style={{ cursor: "pointer" }}>
           For nonprofits
-        </span>
+        </Link>
       </div>
       <div style={{ display: "flex", gap: 12, marginLeft: "auto", alignItems: "center" }}>
+        {charityAccount && (
+          <Link
+            href="/charity/dashboard"
+            className="nav-link"
+            style={{
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "#1c3557",
+              background: "oklch(0.93 0.03 250)",
+              borderRadius: 999,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            {charityAccount.charity.name} dashboard
+          </Link>
+        )}
         {user ? (
           <>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: "#152238" }}>Hi, {user.name.split(" ")[0]}</span>

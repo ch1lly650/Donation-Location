@@ -40,11 +40,21 @@ model Charity {
   logoInitial String
   createdAt   DateTime @default(now())
 
-  items  WishlistItem[]
+  items   WishlistItem[]
   pledges Pledge[]
+  account CharityAccount?
 
   @@index([cause])
   @@index([verified])
+}
+
+model CharityAccount {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  charityId    String   @unique
+  charity      Charity  @relation(fields: [charityId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
 }
 
 model WishlistItem {
