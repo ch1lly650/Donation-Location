@@ -1,5 +1,5 @@
 import { searchCharities } from "@/lib/charities";
-import { prisma } from "@/lib/db";
+import { getRandomAd } from "@/lib/ads";
 import { SAN_JOSE } from "@/lib/geo";
 import SearchPageClient from "@/components/SearchPageClient";
 
@@ -29,10 +29,7 @@ export default async function SearchPage({
 
   const results = await searchCharities({ q, radius, causes, verifiedOnly, origin });
 
-  const inlineAds = await prisma.ad.findMany({ where: { slot: "inline", active: true } });
-  const inlineAd = inlineAds.length
-    ? inlineAds[Math.floor(Math.random() * inlineAds.length)]
-    : null;
+  const inlineAd = await getRandomAd("inline");
 
   return (
     <SearchPageClient

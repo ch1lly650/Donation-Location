@@ -1,10 +1,8 @@
-import { prisma } from "@/lib/db";
+import { getRandomAd } from "@/lib/ads";
 
 export default async function AdBanner() {
-  const ads = await prisma.ad.findMany({ where: { slot: "banner", active: true } });
-  if (ads.length === 0) return null;
-
-  const ad = ads[Math.floor(Math.random() * ads.length)];
+  const ad = await getRandomAd("banner");
+  if (!ad) return null;
 
   return (
     <div
