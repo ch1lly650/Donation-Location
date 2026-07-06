@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Charity {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  cause           String
+  verified        Boolean  @default(true)
+  rating          Float
+  reviewCount     Int
+  foundingYear    Int
+  supportersCount Int
+  is501c3         Boolean  @default(true)
+
+  shortDescription String
+  bio              String
+
+  street  String
+  city    String
+  state   String
+  zip     String
+  lat     Float
+  lng     Float
+
+  phone String
+  email String
+  website String
+  hours   String
+
+  logoInitial String
+  createdAt   DateTime @default(now())
+
+  items  WishlistItem[]
+  pledges Pledge[]
+
+  @@index([cause])
+  @@index([verified])
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  charityId String
+  charity   Charity @relation(fields: [charityId], references: [id], onDelete: Cascade)
+
+  name      String
+  icon      String
+  category  String
+  condition String
+  note      String
+  highNeed  Boolean @default(false)
+
+  pledges Pledge[]
+
+  @@index([charityId])
+  @@index([category])
+  @@index([condition])
+}
+
+model Ad {
+  id       String  @id @default(cuid())
+  slot     String  // "banner" | "inline"
+  active   Boolean @default(true)
+  label    String  // e.g. "SPONSORED" / "PROMOTED"
+  text     String
+  ctaText  String?
+  linkUrl  String?
+  weight   Int     @default(1)
+
+  @@index([slot, active])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  zip          String?
+  emailOptIn   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  pledges Pledge[]
+}
+
+model Pledge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      WishlistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  charityId String
+  charity   Charity  @relation(fields: [charityId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+}

@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --brand-blue: oklch(0.55 0.15 250);
+  --brand-blue-hover: oklch(0.5 0.15 250);
+  --deep-navy: oklch(0.35 0.09 255);
+  --ink: #152238;
+  --body-text: #44526a;
+  --muted: #5a6a84;
+  --faint: #8fa2bd;
+  --border: #e6ebf2;
+  --border-strong: #dbe3ee;
+  --input-border: #c6d1e0;
+  --tint-blue: oklch(0.93 0.03 250);
+  --green: #1e7f4f;
+  --green-bg: #e3f5ec;
+  --amber: #8a5a00;
+  --amber-bg: #fdf1dc;
+  --cream: oklch(0.96 0.015 65);
+  --rose: #8a4a5e;
+  --rose-bg: #faeaef;
+  --font-heading: var(--font-nunito), sans-serif;
+  --font-body: var(--font-source-sans), sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f9fc;
+  font-family: var(--font-body);
+}
+
+input {
+  outline: none;
+  font-family: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-link {
+  transition: color 0.15s ease;
+}
+.nav-link:hover {
+  color: var(--brand-blue-hover);
+}
+
+.btn-primary {
+  background: var(--brand-blue);
+  transition: background 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--brand-blue-hover);
+}
+
+.chip-hover:hover {
+  border-color: var(--brand-blue) !important;
+  color: var(--brand-blue-hover) !important;
+}
+
+.card-hover {
+  transition: box-shadow 0.15s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 6px 20px rgba(30, 70, 140, 0.1);
+}
+
+.result-card-hover {
+  transition: box-shadow 0.15s ease;
+}
+.result-card-hover:hover {
+  box-shadow: 0 4px 16px rgba(30, 70, 140, 0.08);
+}
+
+.item-row-hover {
+  transition: box-shadow 0.15s ease;
+}
+.item-row-hover:hover {
+  box-shadow: 0 4px 14px rgba(30, 70, 140, 0.07);
+}
+
+.outline-hover:hover {
+  border-color: var(--brand-blue) !important;
+  color: var(--brand-blue-hover) !important;
+}
+
+.pledge-btn {
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.pledge-btn:hover {
+  background: var(--brand-blue) !important;
+  color: #fff !important;
+}
+
+.field-input {
+  transition: border-color 0.15s ease;
+}
+.field-input:focus {
+  border-color: var(--brand-blue) !important;
+}
+
+.underline-link:hover {
+  text-decoration: underline;
+}
