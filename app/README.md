@@ -42,12 +42,24 @@ changes are needed — just a different connection URL).
 1. **Create a Turso database.** Sign up at [turso.tech](https://turso.tech),
    create a database, and copy its connection URL (`libsql://<name>-<org>.turso.io`)
    and an auth token from the dashboard.
-2. **Push the schema and seed data to it**, from your machine, once:
+2. **Push the schema and seed data to it**, from your machine, once. Note:
+   `prisma db push` / `migrate dev` can't talk to `libsql://` URLs directly
+   (their schema-diffing engine only understands `file:` for the sqlite
+   provider — you'll get a `P1013` error), so use the `db:push:remote`
+   script instead, which generates the full schema SQL and applies it
+   straight over the libsql client:
    ```bash
-   DATABASE_URL="libsql://<your-db>.turso.io" TURSO_AUTH_TOKEN="<your-token>" npx prisma db push
+   DATABASE_URL="libsql://<your-db>.turso.io" TURSO_AUTH_TOKEN="<your-token>" npm run db:push:remote
    DATABASE_URL="libsql://<your-db>.turso.io" TURSO_AUTH_TOKEN="<your-token>" npx tsx prisma/seed.ts
    ```
-   (On Windows PowerShell, set each with `$env:DATABASE_URL = "..."` on its own line first.)
+   (On Windows PowerShell, set each with `$env:DATABASE_URL = "..."` on its
+   own line first, then run the commands without the `VAR=value` prefix.)
+   This script is meant for first-time setup — it assumes the remote
+   database is empty. If you later change `prisma/schema.prisma` and the
+   remote already has data you want to keep, you'll need to write the
+   incremental `ALTER TABLE`/`CREATE TABLE` SQL by hand and apply it the
+   same way (Prisma can't introspect a live `libsql://` database to diff
+   against automatically).
 3. **In your Vercel project settings → Environment Variables**, set:
    - `DATABASE_URL` = the `libsql://...` URL from step 1
    - `TURSO_AUTH_TOKEN` = the token from step 1
