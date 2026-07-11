@@ -25,7 +25,7 @@ an account. Built from the design handoff in
 
 ```bash
 npm install
-npm run setup   # generates the Prisma client, creates the SQLite db, seeds 20 charities + ads
+npm run setup   # generates the Prisma client, creates the SQLite db, seeds ad banner content
 npm run dev
 ```
 
@@ -44,14 +44,12 @@ The service role key is used server-side only (`lib/supabase/admin.ts`) to
 create pre-confirmed users at signup, so there's no email-delivery step to
 configure for this to work end to end.
 
-The seed data is idempotent — re-run `npm run db:seed` any time to reset
-charities/items/ads back to their initial state. It also clears the local
-`User`/`CharityAccount` rows, but **not** the underlying Supabase Auth
-users — if you reseed and then try to sign up again with an email you'd
-already used, Supabase will (correctly) say that email is taken even
-though the local row is gone. Delete the user from your Supabase
-dashboard's Authentication tab (or via `supabase.auth.admin.deleteUser`)
-if you hit this.
+There's no example/seed charity data — the database starts empty, and
+charities create their own profiles via `/for-nonprofits`. `prisma/seed.ts`
+only manages the `Ad` table (the sponsored banner + inline promoted
+content) and is safe to re-run any time (`npm run db:seed`) — it never
+touches `Charity`, `WishlistItem`, `Pledge`, or `User`, so it won't clobber
+real signups.
 
 ## Deploying to Vercel
 
@@ -119,8 +117,8 @@ failures because each cold start gets a fresh, empty, throwaway database.
 - `prisma/schema.prisma` — data model (Charity, WishlistItem, Ad, User,
   CharityAccount, Pledge). `User`/`CharityAccount` don't store passwords —
   just a `supabaseUserId` linking to the Supabase Auth user
-- `prisma/seed.ts` — 20 realistic charities (incl. the flagship "Helping
-  Others Prosper Everywhere") with wishlist items and ad slots
+- `prisma/seed.ts` — seeds the ad banner/promoted content only; no example
+  charities (charities create their own via `/for-nonprofits`)
 
 ## Notable implementation notes
 
