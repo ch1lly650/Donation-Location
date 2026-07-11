@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { hashPassword, createSessionCookie } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -31,12 +32,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const passwordHash = await hashPassword(password);
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash, zip: zip || null, emailOptIn },
+  const admin = createAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { role: "donor", name },
   });
+  if (createError || !created.user) {
+    return NextResponse.json(
+      { error: createError?.message ?? "Could not create account." },
+      { status: 400 }
+    );
+  }
 
-  await createSessionCookie(user.id);
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError) {
+    return NextResponse.json({ error: signInError.message }, { status: 400 });
+  }
+
+  const user = await prisma.user.create({
+    data: { name, email, supabaseUserId: created.user.id, zip: zip || null, emailOptIn },
+  });
 
   return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
 }

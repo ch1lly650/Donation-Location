@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
-import { createCharitySessionCookie } from "@/lib/charityAuth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { uniqueCharitySlug } from "@/lib/slug";
 import { ALL_CAUSES } from "@/lib/causes";
 import { SAN_JOSE } from "@/lib/geo";
@@ -48,9 +48,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const slug = await uniqueCharitySlug(charityName);
-  const passwordHash = await hashPassword(password);
+  const admin = createAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { role: "charity", charityName },
+  });
+  if (createError || !created.user) {
+    return NextResponse.json(
+      { error: createError?.message ?? "Could not create account." },
+      { status: 400 }
+    );
+  }
 
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError) {
+    return NextResponse.json({ error: signInError.message }, { status: 400 });
+  }
+
+  const slug = await uniqueCharitySlug(charityName);
   const charity = await prisma.charity.create({
     data: {
       slug,
@@ -79,10 +97,8 @@ export async function POST(request: NextRequest) {
   });
 
   const account = await prisma.charityAccount.create({
-    data: { email, passwordHash, charityId: charity.id },
+    data: { email, supabaseUserId: created.user.id, charityId: charity.id },
   });
 
-  await createCharitySessionCookie(account.id);
-
-  return NextResponse.json({ charity: { slug: charity.slug, name: charity.name } });
+  return NextResponse.json({ charity: { slug: charity.slug, name: charity.name }, accountId: account.id });
 }

@@ -13,7 +13,13 @@ an account. Built from the design handoff in
   external services); in production it points at a hosted [Turso](https://turso.tech)
   database using the exact same schema and adapter — see "Deploying to
   Vercel" below.
-- Email/password auth via signed JWT session cookies (`jose` + `bcryptjs`)
+- Email/password auth via [Supabase Auth](https://supabase.com/auth) (both
+  donor accounts and charity accounts — see `lib/supabase/`). App data
+  (charities, wishlist items, ads, pledges) stays in the Prisma/libsql
+  database above; Supabase is used only for authentication. A `role`
+  (`"donor"` | `"charity"`) is stored in each Supabase user's metadata, and
+  a local `User`/`CharityAccount` row (keyed by `supabaseUserId`) holds the
+  app-specific profile fields and FK relations (e.g. `Pledge.userId`).
 
 ## Run it locally
 
@@ -25,10 +31,27 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+**Auth requires a Supabase project** (free tier is fine). Create one at
+[supabase.com](https://supabase.com), then add a `.env.local` (gitignored —
+never commit real credentials) with, from your project's
+**Settings → API**:
+```bash
+NEXT_PUBLIC_SUPABASE_URL="https://<your-project>.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon/public key>"
+SUPABASE_SERVICE_ROLE_KEY="<service_role key -- keep this one secret>"
+```
+The service role key is used server-side only (`lib/supabase/admin.ts`) to
+create pre-confirmed users at signup, so there's no email-delivery step to
+configure for this to work end to end.
+
 The seed data is idempotent — re-run `npm run db:seed` any time to reset
-charities/items/ads back to their initial state (it does not touch
-signed-up user accounts... actually it does clear users too, see
-`prisma/seed.ts` if you want to change that).
+charities/items/ads back to their initial state. It also clears the local
+`User`/`CharityAccount` rows, but **not** the underlying Supabase Auth
+users — if you reseed and then try to sign up again with an email you'd
+already used, Supabase will (correctly) say that email is taken even
+though the local row is gone. Delete the user from your Supabase
+dashboard's Authentication tab (or via `supabase.auth.admin.deleteUser`)
+if you hit this.
 
 ## Deploying to Vercel
 
@@ -63,9 +86,11 @@ changes are needed — just a different connection URL).
 3. **In your Vercel project settings → Environment Variables**, set:
    - `DATABASE_URL` = the `libsql://...` URL from step 1
    - `TURSO_AUTH_TOKEN` = the token from step 1
-   - `AUTH_SECRET` = a fresh random secret (**do not reuse** the one committed
-     in `.env` — that one is fine for local/demo use only). Generate one with
-     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+     `SUPABASE_SERVICE_ROLE_KEY` = the same three values from your
+     `.env.local` (see "Run it locally" above) — same Supabase project as
+     local, or a separate one for production if you'd rather keep prod
+     users isolated from local testing.
 4. **Deploy** — either connect the GitHub repo in the Vercel dashboard, or
    run `npx vercel --prod` from the `app/` directory. The root directory
    for the Vercel project must be `app/` (this repo also contains the
@@ -79,13 +104,21 @@ failures because each cold start gets a fresh, empty, throwaway database.
 
 ## Project layout
 
-- `app/` — routes: `/`, `/search`, `/charity/[slug]`, `/auth`, and the
-  `api/*` route handlers (charity search, ads, auth, pledges)
+- `app/` — routes: `/`, `/search`, `/charity/[slug]`, `/auth` (donor),
+  `/for-nonprofits` (charity), `/charity/dashboard` (charity profile/wishlist
+  editing), and the `api/*` route handlers
 - `components/` — shared UI (nav, ad banner, footer) and per-screen client
   components
-- `lib/` — Prisma client singleton, auth/session helpers, geo distance
-  calculation, and search/ads query logic
-- `prisma/schema.prisma` — data model (Charity, WishlistItem, Ad, User, Pledge)
+- `lib/` — Prisma client singleton, geo distance calculation, search/ads
+  query logic, and `lib/supabase/` (`server.ts` for Server
+  Components/Route Handlers, `admin.ts` for the service-role client used at
+  signup); `lib/auth.ts`/`lib/charityAuth.ts` wrap Supabase's session with a
+  lookup against the local `User`/`CharityAccount` row
+- `proxy.ts` (project root) — refreshes the Supabase session token on every
+  request (Next.js 16 renamed `middleware.ts` to `proxy.ts`)
+- `prisma/schema.prisma` — data model (Charity, WishlistItem, Ad, User,
+  CharityAccount, Pledge). `User`/`CharityAccount` don't store passwords —
+  just a `supabaseUserId` linking to the Supabase Auth user
 - `prisma/seed.ts` — 20 realistic charities (incl. the flagship "Helping
   Others Prosper Everywhere") with wishlist items and ad slots
 
@@ -98,6 +131,16 @@ failures because each cold start gets a fresh, empty, throwaway database.
 - The charity profile's wishlist search/category/condition filters run
   client-side against the already-fetched item list for instant results,
   and also sync to the URL (`?items_q=&category=&condition=`).
+- Charities get their own signup/login (`/for-nonprofits`, separate from
+  donor accounts) and a dashboard (`/charity/dashboard`) to edit their
+  profile and manage wishlist items. Ownership is enforced server-side (not
+  just authentication) — a charity can only ever edit its own items.
+- Since Supabase Auth is one global session per browser, a donor and a
+  charity account can no longer be logged in at the same time in the same
+  browser (logging into one signs the other out) — a real behavior change
+  from an earlier iteration of this app that used two independent cookies.
+  Signing up/logging in with the wrong account type (e.g. a charity email
+  on the donor login) is rejected and signs out the mismatched session.
 - Donate / Pledge actions are auth-gated: logged-out users are routed to
   `/auth?tab=signup`; logged-in users can pledge an item (persisted per
   user) — money donation checkout is intentionally out of scope per the

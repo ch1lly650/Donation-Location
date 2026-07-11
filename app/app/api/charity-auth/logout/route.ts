@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { destroyCharitySessionCookie } from "@/lib/charityAuth";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST() {
-  await destroyCharitySessionCookie();
+  const supabase = await createClient();
+  await supabase.auth.signOut();
   return NextResponse.json({ ok: true });
 }

@@ -49,12 +49,12 @@ model Charity {
 }
 
 model CharityAccount {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  charityId    String   @unique
-  charity      Charity  @relation(fields: [charityId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  email          String   @unique
+  supabaseUserId String   @unique
+  charityId      String   @unique
+  charity        Charity  @relation(fields: [charityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
 }
 
 model WishlistItem {
@@ -90,13 +90,13 @@ model Ad {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  zip          String?
-  emailOptIn   Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  supabaseUserId String   @unique
+  zip            String?
+  emailOptIn     Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
   pledges Pledge[]
 }
