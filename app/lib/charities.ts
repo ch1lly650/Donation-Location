@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { milesBetween, SAN_JOSE } from "@/lib/geo";
 
 export async function getFeaturedCharities(limit = 3) {
-  const charities = await prisma.charity.findMany({ where: { verified: true } });
+  const charities = await prisma.charity.findMany();
 
   return charities
     .map((c) => ({ ...c, distanceMi: milesBetween(SAN_JOSE, { lat: c.lat, lng: c.lng }) }))
@@ -11,6 +11,7 @@ export async function getFeaturedCharities(limit = 3) {
     .map((c) => ({
       slug: c.slug,
       name: c.name,
+      verified: c.verified,
       meta: `${c.cause} · ${c.distanceMi.toFixed(1)} mi away · ${c.city}, ${c.state}`,
     }));
 }
@@ -28,7 +29,7 @@ export async function searchCharities(filters: SearchFilters) {
     q = "",
     radius = 10,
     causes = [],
-    verifiedOnly = true,
+    verifiedOnly = false,
     origin = SAN_JOSE,
   } = filters;
   const query = q.trim().toLowerCase();

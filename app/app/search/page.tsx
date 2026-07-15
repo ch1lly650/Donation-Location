@@ -19,13 +19,14 @@ export default async function SearchPage({
   const causesParam = get("causes");
   const causes =
     causesParam === undefined
-      ? ["Community aid"]
+      ? []
       : causesParam.split(",").map((c) => c.trim()).filter(Boolean);
-  const verifiedOnly = get("verified") !== "false";
+  const verifiedOnly = get("verified") === "true";
   const lat = Number(get("lat"));
   const lng = Number(get("lng"));
   const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
   const origin = hasGeo ? { lat, lng } : SAN_JOSE;
+  const locLabel = get("loc");
 
   const results = await searchCharities({ q, radius, causes, verifiedOnly, origin });
 
@@ -38,7 +39,9 @@ export default async function SearchPage({
       initialRadius={radius}
       initialCauses={causes}
       initialVerifiedOnly={verifiedOnly}
-      initialLocationLabel={hasGeo ? "your location" : SAN_JOSE.label}
+      initialLocationLabel={locLabel ?? (hasGeo ? "your location" : SAN_JOSE.label)}
+      initialLat={hasGeo ? lat : SAN_JOSE.lat}
+      initialLng={hasGeo ? lng : SAN_JOSE.lng}
       inlineAd={inlineAd ? { label: inlineAd.label, text: inlineAd.text } : null}
     />
   );

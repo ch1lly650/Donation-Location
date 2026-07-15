@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     .split(",")
     .map((c) => c.trim())
     .filter(Boolean);
-  const verifiedOnly = params.get("verified") !== "false";
+  const verifiedOnly = params.get("verified") === "true";
   const latParam = params.get("lat");
   const lngParam = params.get("lng");
   const lat = latParam !== null ? Number(latParam) : NaN;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentCharityAccount } from "@/lib/charityAuth";
 import { ALL_CAUSES } from "@/lib/causes";
+import { geocodeAddressParts } from "@/lib/geocode";
 
 export async function PATCH(request: NextRequest) {
   const account = await getCurrentCharityAccount();
@@ -34,6 +35,21 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid cause." }, { status: 400 });
   }
 
+  let coords: { lat: number; lng: number } | undefined;
+  if (street !== undefined || city !== undefined || state !== undefined || zip !== undefined) {
+    const current = await prisma.charity.findUnique({
+      where: { id: account.charityId },
+      select: { street: true, city: true, state: true, zip: true },
+    });
+    const geocoded = await geocodeAddressParts({
+      street: street ?? current?.street,
+      city: city ?? current?.city ?? "",
+      state: state ?? current?.state ?? "",
+      zip: zip ?? current?.zip,
+    });
+    if (geocoded) coords = { lat: geocoded.lat, lng: geocoded.lng };
+  }
+
   const charity = await prisma.charity.update({
     where: { id: account.charityId },
     data: {
@@ -50,6 +66,7 @@ export async function PATCH(request: NextRequest) {
       ...(hours !== undefined && { hours }),
       ...(foundingYear !== undefined && !Number.isNaN(foundingYear) && { foundingYear }),
       ...(is501c3 !== undefined && { is501c3 }),
+      ...(coords ?? {}),
     },
   });
 

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { uniqueCharitySlug } from "@/lib/slug";
 import { ALL_CAUSES } from "@/lib/causes";
 import { SAN_JOSE } from "@/lib/geo";
+import { geocodeAddressParts } from "@/lib/geocode";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -49,12 +50,15 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { role: "charity", charityName },
-  });
+  const [{ data: created, error: createError }, geocoded] = await Promise.all([
+    admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { role: "charity", charityName },
+    }),
+    geocodeAddressParts({ street, city, state, zip }),
+  ]);
   if (createError || !created.user) {
     return NextResponse.json(
       { error: createError?.message ?? "Could not create account." },
@@ -86,8 +90,8 @@ export async function POST(request: NextRequest) {
       city,
       state,
       zip: zip || "",
-      lat: SAN_JOSE.lat,
-      lng: SAN_JOSE.lng,
+      lat: geocoded?.lat ?? SAN_JOSE.lat,
+      lng: geocoded?.lng ?? SAN_JOSE.lng,
       phone: phone || "Not provided",
       email,
       website: website || "",

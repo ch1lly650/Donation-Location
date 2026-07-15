@@ -125,7 +125,24 @@ failures because each cold start gets a fresh, empty, throwaway database.
 - Search (`/search`) filters (text query, distance radius, cause,
   verified-only) are backed by a real API route (`/api/charities`) and
   filter instantly as you type/toggle, with the URL kept in sync with
-  filter state.
+  filter state. Defaults show *all* causes and both verified/unverified
+  charities (unlike the original design mock, which defaulted to "Community
+  aid" only + verified-only) — now that real self-registered charities
+  start unverified with no admin review step, hiding them by default would
+  make them invisible.
+- Charity addresses are geocoded via [Nominatim](https://nominatim.org)
+  (OpenStreetMap, free, no API key) at signup and whenever the address is
+  edited (`lib/geocode.ts`), with a fallback chain (full address → city +
+  state + zip → city + state) since informal/placeholder street text often
+  fails to resolve. If geocoding fails outright, the charity falls back to
+  the San Jose, CA default coordinates rather than blocking signup.
+- The search page's location (used for the distance filter and "within N
+  miles of ___" label) is user-changeable — click "Change" next to the
+  location text to type a city/ZIP/address (geocoded via `/api/geocode`)
+  or use "Near me" for browser geolocation. It persists in the URL
+  (`?lat=&lng=&loc=`) across reloads. The homepage's "Featured near you"
+  is not user-location-aware — it always shows the charities closest to
+  San Jose, CA.
 - The charity profile's wishlist search/category/condition filters run
   client-side against the already-fetched item list for instant results,
   and also sync to the URL (`?items_q=&category=&condition=`).

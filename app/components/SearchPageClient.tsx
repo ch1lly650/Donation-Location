@@ -33,6 +33,8 @@ export default function SearchPageClient({
   initialCauses,
   initialVerifiedOnly,
   initialLocationLabel,
+  initialLat,
+  initialLng,
   inlineAd,
 }: {
   initialResults: Result[];
@@ -41,6 +43,8 @@ export default function SearchPageClient({
   initialCauses: string[];
   initialVerifiedOnly: boolean;
   initialLocationLabel: string;
+  initialLat: number;
+  initialLng: number;
   inlineAd: InlineAd;
 }) {
   const router = useRouter();
@@ -50,7 +54,14 @@ export default function SearchPageClient({
   const [selectedCauses, setSelectedCauses] = useState<string[]>(initialCauses);
   const [verifiedOnly, setVerifiedOnly] = useState(initialVerifiedOnly);
   const [results, setResults] = useState(initialResults);
-  const [locationLabel] = useState(initialLocationLabel);
+  const [locationLabel, setLocationLabel] = useState(initialLocationLabel);
+  const [lat, setLat] = useState(initialLat);
+  const [lng, setLng] = useState(initialLng);
+
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationInput, setLocationInput] = useState(initialLocationLabel);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
   const isFirstRun = useRef(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,6 +78,9 @@ export default function SearchPageClient({
       params.set("radius", String(radius));
       params.set("causes", selectedCauses.join(","));
       params.set("verified", String(verifiedOnly));
+      params.set("lat", String(lat));
+      params.set("lng", String(lng));
+      params.set("loc", locationLabel);
 
       router.replace(`/search?${params.toString()}`, { scroll: false });
 
@@ -79,7 +93,7 @@ export default function SearchPageClient({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, radius, selectedCauses, verifiedOnly]);
+  }, [query, radius, selectedCauses, verifiedOnly, lat, lng, locationLabel]);
 
   function toggleCause(name: string) {
     setSelectedCauses((prev) =>
@@ -92,6 +106,52 @@ export default function SearchPageClient({
     setRadius(50);
     setVerifiedOnly(false);
     setQuery("");
+  }
+
+  async function submitLocation() {
+    const value = locationInput.trim();
+    if (!value) {
+      setEditingLocation(false);
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(value)}`);
+    const data = await res.json();
+    setLocating(false);
+    if (!res.ok) {
+      setLocationError(data.error ?? "Couldn't find that location.");
+      return;
+    }
+    setLat(data.lat);
+    setLng(data.lng);
+    setLocationLabel(data.label);
+    setLocationInput(data.label);
+    setEditingLocation(false);
+  }
+
+  function useNearMe() {
+    if (!navigator.geolocation) {
+      setLocationError("Your browser doesn't support geolocation.");
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLng(pos.coords.longitude);
+        setLocationLabel("your location");
+        setLocationInput("your location");
+        setLocating(false);
+        setEditingLocation(false);
+      },
+      () => {
+        setLocationError("Couldn't get your location.");
+        setLocating(false);
+      },
+      { timeout: 5000 }
+    );
   }
 
   const labelStyle: React.CSSProperties = {
@@ -265,11 +325,75 @@ export default function SearchPageClient({
                 style={{ flex: 1, border: "none", font: "600 14.5px 'Source Sans 3', sans-serif", color: "#152238", background: "transparent" }}
               />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: "#44526a" }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50% 50% 50% 0", background: "oklch(0.55 0.15 250)", transform: "rotate(-45deg)" }} />
-              {locationLabel}
-            </div>
+
+            {editingLocation ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  autoFocus
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitLocation();
+                    if (e.key === "Escape") {
+                      setEditingLocation(false);
+                      setLocationInput(locationLabel);
+                      setLocationError(null);
+                    }
+                  }}
+                  placeholder="City, ZIP, or address…"
+                  style={{
+                    border: "1.5px solid #dbe3ee",
+                    borderRadius: 999,
+                    padding: "8px 14px",
+                    font: "600 13.5px 'Source Sans 3', sans-serif",
+                    color: "#152238",
+                    minWidth: 200,
+                  }}
+                />
+                <button
+                  onClick={submitLocation}
+                  disabled={locating}
+                  className="btn-primary"
+                  style={{ background: "oklch(0.55 0.15 250)", border: "none", color: "#fff", font: "700 13px 'Source Sans 3', sans-serif", padding: "8px 16px", borderRadius: 999, cursor: "pointer" }}
+                >
+                  {locating ? "…" : "Set"}
+                </button>
+                <button
+                  onClick={useNearMe}
+                  disabled={locating}
+                  style={{ background: "#fff", border: "1.5px solid #dbe3ee", color: "#44526a", font: "600 13px 'Source Sans 3', sans-serif", padding: "8px 12px", borderRadius: 999, cursor: "pointer" }}
+                >
+                  Near me
+                </button>
+                <span
+                  onClick={() => {
+                    setEditingLocation(false);
+                    setLocationInput(locationLabel);
+                    setLocationError(null);
+                  }}
+                  style={{ fontSize: 12.5, fontWeight: 600, color: "#8fa2bd", cursor: "pointer" }}
+                >
+                  Cancel
+                </span>
+              </div>
+            ) : (
+              <div
+                onClick={() => {
+                  setEditingLocation(true);
+                  setLocationInput(locationLabel);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: "#44526a", cursor: "pointer" }}
+                title="Change location"
+              >
+                <span style={{ width: 10, height: 10, borderRadius: "50% 50% 50% 0", background: "oklch(0.55 0.15 250)", transform: "rotate(-45deg)" }} />
+                {locationLabel}
+                <span style={{ color: "oklch(0.55 0.15 250)", fontWeight: 700, fontSize: 12.5 }}>Change</span>
+              </div>
+            )}
           </div>
+          {locationError && (
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#8a4a5e", marginTop: -8 }}>{locationError}</div>
+          )}
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 14.5, color: "#5a6a84" }}>
               <b style={{ color: "#152238" }}>{results.length} charities</b> within {radius} miles of {locationLabel}

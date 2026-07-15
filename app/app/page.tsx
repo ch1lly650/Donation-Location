@@ -90,19 +90,21 @@ export default async function HomePage() {
                   >
                     {ch.name}
                   </Link>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: "#1e7f4f",
-                      background: "#e3f5ec",
-                      borderRadius: 4,
-                      padding: "2px 6px",
-                      flex: "none",
-                    }}
-                  >
-                    VERIFIED
-                  </span>
+                  {ch.verified && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#1e7f4f",
+                        background: "#e3f5ec",
+                        borderRadius: 4,
+                        padding: "2px 6px",
+                        flex: "none",
+                      }}
+                    >
+                      VERIFIED
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 13, color: "#5a6a84", marginBottom: 10 }}>{ch.meta}</div>
                 <Link
